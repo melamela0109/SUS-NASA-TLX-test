@@ -24,6 +24,13 @@
             border-radius: 50%;
         }
         
+        /* Fixed Radio Button Styles */
+        .radio-input:checked + .radio-circle {
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+            color: white;
+        }
+        
         .tab-active {
             border-bottom: 2px solid #4f46e5;
             color: #4f46e5;
@@ -58,6 +65,20 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #ffffff;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="text-gray-800 flex flex-col min-h-screen">
@@ -65,9 +86,7 @@
     <!-- Header -->
     <header class="bg-white shadow-sm sticky top-0 z-50">
         <div class="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <!-- Left Side: Language Selector & Title -->
             <div class="flex items-center w-full sm:w-auto justify-between sm:justify-start gap-4">
-                <!-- Language Selector (Moved to Left) -->
                 <div class="flex items-center space-x-2 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100 shadow-sm">
                     <i class="fas fa-globe text-indigo-600"></i>
                     <select id="languageSelector" class="bg-transparent border-none text-gray-800 text-sm font-medium focus:ring-0 cursor-pointer outline-none py-0 pl-1 pr-6">
@@ -76,7 +95,6 @@
                         <option value="ja">日本語</option>
                     </select>
                 </div>
-
                 <h1 class="text-xl font-bold text-gray-900" data-i18n="appTitle">UX Evaluation Tool</h1>
             </div>
         </div>
@@ -94,7 +112,7 @@
             <button id="tab-sus" onclick="switchTab('sus')" class="tab-inactive py-4 px-6 focus:outline-none flex-1 text-center whitespace-nowrap" data-i18n="tabSUS">SUS Survey</button>
         </div>
 
-        <!-- Participant Info Input (Hidden by default, shown in TLX/SUS tabs) -->
+        <!-- Participant Info Input -->
         <div id="participant-info" class="hidden bg-white rounded-xl shadow-sm p-4 mb-6 flex items-center gap-4 border border-gray-100">
             <div class="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500">
                 <i class="fas fa-user"></i>
@@ -105,18 +123,37 @@
             </div>
         </div>
 
-        <!-- Guide Section (Visible by default) -->
+        <!-- Guide Section -->
         <div id="section-guide" class="fade-in">
             <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <h2 class="text-2xl font-bold mb-6 text-indigo-700 border-b pb-2" data-i18n="guideTitle">User Guide</h2>
                 
+                <!-- Google Sheet Setup Warning -->
+                <div id="setup-warning" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700 font-bold">
+                                Setup Required / 설정 필요
+                            </p>
+                            <p class="text-xs text-yellow-600 mt-1">
+                                Open this HTML file in a text editor and replace <code class="bg-yellow-100 px-1 rounded">const GOOGLE_SCRIPT_URL = "";</code> with your deployed Web App URL to enable automatic saving.
+                                <br>
+                                (이 파일을 메모장으로 열고 GOOGLE_SCRIPT_URL 변수에 배포된 웹 앱 주소를 입력해야 자동 저장이 작동합니다.)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="space-y-8">
                     <!-- Step 0: Language -->
                     <div class="flex gap-4">
                         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold"><i class="fas fa-globe"></i></div>
                         <div>
                             <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep0Title">Select Language</h3>
-                            <p class="text-gray-600 text-sm leading-relaxed" data-i18n="guideStep0Desc">You can change the language (Korean, English, Japanese) using the selector at the top left of the screen.</p>
+                            <p class="text-gray-600 text-sm leading-relaxed" data-i18n="guideStep0Desc">Change language at top left.</p>
                         </div>
                     </div>
 
@@ -125,7 +162,7 @@
                         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">1</div>
                         <div>
                             <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep1Title">Enter Participant Name</h3>
-                            <p class="text-gray-600 text-sm leading-relaxed" data-i18n="guideStep1Desc">Enter the name of the test participant at the top of the screen. This helps identify the result data later.</p>
+                            <p class="text-gray-600 text-sm leading-relaxed" data-i18n="guideStep1Desc">Enter name at the top.</p>
                         </div>
                     </div>
 
@@ -133,11 +170,11 @@
                     <div class="flex gap-4">
                         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">2</div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep2Title">NASA-TLX (Task Load)</h3>
-                            <p class="text-gray-600 text-sm leading-relaxed mb-2" data-i18n="guideStep2Desc">Used to measure the perceived workload of a task. Evaluate 6 dimensions using sliders.</p>
+                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep2Title">NASA-TLX</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed mb-2" data-i18n="guideStep2Desc">Measure workload.</p>
                             <ul class="list-disc list-inside text-xs text-gray-500 space-y-1 bg-gray-50 p-3 rounded-lg">
-                                <li data-i18n="guideTLXNote1"><span class="font-semibold text-gray-700">0-100 Scale:</span> Higher values mean higher workload/stress.</li>
-                                <li data-i18n="guideTLXNote2"><span class="font-semibold text-gray-700">Performance:</span> Be careful! "Failure" is high (100), "Perfect" is low (0).</li>
+                                <li data-i18n="guideTLXNote1">0-100 Scale</li>
+                                <li data-i18n="guideTLXNote2">Performance: Failure(100) - Perfect(0)</li>
                             </ul>
                         </div>
                     </div>
@@ -146,13 +183,13 @@
                     <div class="flex gap-4">
                         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">3</div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep3Title">SUS (System Usability)</h3>
-                            <p class="text-gray-600 text-sm leading-relaxed mb-2" data-i18n="guideStep3Desc">A standard questionnaire for assessing perceived usability. Select from 1 to 5.</p>
+                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep3Title">SUS</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed mb-2" data-i18n="guideStep3Desc">Measure usability.</p>
                             <div class="bg-gray-50 p-3 rounded-lg text-xs text-gray-500 space-y-1">
-                                <p><span class="font-semibold text-blue-600" data-i18n="guideSUSNoteHeader">Score Interpretation:</span></p>
-                                <p data-i18n="guideSUSNote1">• Above 80: Excellent (A)</p>
-                                <p data-i18n="guideSUSNote2">• Above 68: Good (B)</p>
-                                <p data-i18n="guideSUSNote3">• Below 50: Poor (F)</p>
+                                <p data-i18n="guideSUSNoteHeader">Interpretation:</p>
+                                <p data-i18n="guideSUSNote1">>80: A</p>
+                                <p data-i18n="guideSUSNote2">>68: B</p>
+                                <p data-i18n="guideSUSNote3">&lt;50: F</p>
                             </div>
                         </div>
                     </div>
@@ -161,15 +198,15 @@
                     <div class="flex gap-4">
                         <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">4</div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep4Title">Save & Copy Results</h3>
-                            <p class="text-gray-600 text-sm leading-relaxed" data-i18n="guideStep4Desc">After clicking 'Calculate Score', a modal will appear. Use the 'Copy Result' button to copy the text to your clipboard for pasting into Excel or reports.</p>
+                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep4Title">Automatic Saving</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed" data-i18n="guideStep4Desc">Results are automatically saved to Google Sheets when calculated, so no manual copying is needed.</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- NASA-TLX Section (Hidden by default) -->
+        <!-- NASA-TLX Section -->
         <div id="section-tlx" class="hidden fade-in">
             <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <h2 class="text-2xl font-bold mb-2 text-indigo-700" data-i18n="tlxTitle">NASA Task Load Index</h2>
@@ -177,20 +214,19 @@
 
                 <form id="form-tlx">
                     <div id="tlx-container" class="space-y-8"></div>
-                    
                     <div class="mt-8 flex justify-end space-x-3">
                         <button type="button" onclick="resetForm('form-tlx')" class="px-6 py-3 rounded-lg text-gray-500 font-semibold hover:bg-gray-100 transition duration-200">
                             <i class="fas fa-undo mr-2"></i> <span data-i18n="btnReset">Reset</span>
                         </button>
-                        <button type="button" onclick="calculateTLX()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow transition duration-200 flex items-center">
-                            <i class="fas fa-calculator mr-2"></i> <span data-i18n="btnCalculate">Calculate Score</span>
+                        <button type="button" onclick="calculateTLX()" id="btn-calc-tlx" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow transition duration-200 flex items-center">
+                            <i class="fas fa-calculator mr-2"></i> <span data-i18n="btnCalculate">Calculate & Save</span>
                         </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- SUS Section (Hidden by default) -->
+        <!-- SUS Section -->
         <div id="section-sus" class="hidden fade-in">
             <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
                 <h2 class="text-2xl font-bold mb-2 text-indigo-700" data-i18n="susTitle">System Usability Scale</h2>
@@ -203,13 +239,12 @@
 
                 <form id="form-sus">
                     <div id="sus-container" class="space-y-6"></div>
-
                     <div class="mt-8 flex justify-end space-x-3">
                         <button type="button" onclick="resetForm('form-sus')" class="px-6 py-3 rounded-lg text-gray-500 font-semibold hover:bg-gray-100 transition duration-200">
                             <i class="fas fa-undo mr-2"></i> <span data-i18n="btnReset">Reset</span>
                         </button>
-                        <button type="button" onclick="calculateSUS()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow transition duration-200 flex items-center">
-                            <i class="fas fa-calculator mr-2"></i> <span data-i18n="btnCalculate">Calculate Score</span>
+                        <button type="button" onclick="calculateSUS()" id="btn-calc-sus" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow transition duration-200 flex items-center">
+                            <i class="fas fa-calculator mr-2"></i> <span data-i18n="btnCalculate">Calculate & Save</span>
                         </button>
                     </div>
                 </form>
@@ -230,6 +265,8 @@
                 <div class="bg-gray-50 rounded-lg p-4 mb-6 text-center">
                     <div class="text-4xl font-extrabold text-indigo-600 mb-1" id="result-score">0</div>
                     <div class="text-sm font-medium text-gray-500 uppercase tracking-wide" id="result-label">Total Score</div>
+                    <!-- Status message for saving -->
+                    <div id="save-status" class="mt-2 text-xs font-semibold text-gray-400 h-5"></div>
                 </div>
 
                 <div id="result-details" class="hidden"></div>
@@ -249,6 +286,14 @@
     </main>
 
     <script>
+        // =========================================================================
+        // [IMPORTANT] SETUP YOUR GOOGLE SHEET URL HERE
+        // [중요] 아래 따옴표 안에 배포된 구글 웹 앱 URL을 붙여넣으세요.
+        // =========================================================================
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwdE4YPhux27RaPoqLLet6CXeG2DKKWWkHSw3J3VXuG6cOYJ1UvxBPpZkdWkAZMPDhb/exec"; 
+        // Example: "https://script.google.com/macros/s/AKfycbx.../exec"
+        // =========================================================================
+
         // --- Data & Translations ---
         const dictionary = {
             ko: {
@@ -260,27 +305,22 @@
                 tabGuide: "사용 방법",
                 
                 guideTitle: "사용 가이드",
-                
                 guideStep0Title: "언어 선택",
                 guideStep0Desc: "화면 좌측 상단의 선택기를 통해 언어(한국어, 영어, 일본어)를 변경할 수 있습니다.",
-
                 guideStep1Title: "참가자 이름 입력",
-                guideStep1Desc: "설문 탭 상단에 참가자의 이름을 입력하세요. 나중에 결과 데이터를 식별하는 데 도움이 됩니다.",
-                
+                guideStep1Desc: "설문 탭 상단에 참가자의 이름을 입력하세요.",
                 guideStep2Title: "NASA-TLX (작업 부하)",
-                guideStep2Desc: "작업 수행 시 느껴지는 주관적인 부하를 측정합니다. 6가지 항목을 슬라이더로 조절하세요.",
-                guideTLXNote1: "<span class='font-semibold text-gray-700'>0-100 척도:</span> 점수가 높을수록 작업 부하/스트레스가 높음을 의미합니다.",
-                guideTLXNote2: "<span class='font-semibold text-gray-700'>수행도(Performance):</span> 주의하세요! '실패'가 높은 점수(100), '완벽'이 낮은 점수(0)입니다.",
-
+                guideStep2Desc: "작업 수행 시 느껴지는 주관적인 부하를 측정합니다.",
+                guideTLXNote1: "<span class='font-semibold text-gray-700'>0-100 척도:</span> 점수가 높을수록 작업 부하/스트레스가 높음",
+                guideTLXNote2: "<span class='font-semibold text-gray-700'>수행도:</span> '실패'가 100점, '완벽'이 0점입니다.",
                 guideStep3Title: "SUS (시스템 사용성)",
-                guideStep3Desc: "시스템의 사용성을 평가하는 표준 설문입니다. 1(비동의)부터 5(동의)까지 선택하세요.",
+                guideStep3Desc: "시스템의 사용성을 평가합니다.",
                 guideSUSNoteHeader: "점수 해석:",
                 guideSUSNote1: "• 80점 이상: 탁월 (A)",
                 guideSUSNote2: "• 68점 이상: 우수 (B)",
                 guideSUSNote3: "• 50점 미만: 미흡 (F)",
-
-                guideStep4Title: "결과 저장 및 복사",
-                guideStep4Desc: "계산하기 버튼을 누르면 결과창이 뜹니다. '결과 복사' 버튼을 눌러 텍스트를 복사한 뒤 엑셀이나 보고서에 붙여넣으세요.",
+                guideStep4Title: "결과 자동 저장",
+                guideStep4Desc: "계산하기 버튼을 누르면 구글 시트에 자동으로 저장되므로, 별도로 복사할 필요가 없습니다.",
 
                 tlxTitle: "NASA-TLX 평가",
                 tlxDesc: "수행한 작업에 대해 각 항목별로 느껴진 부하 정도를 평가해주세요.",
@@ -288,7 +328,7 @@
                 susDesc: "이 시스템을 사용해본 경험을 바탕으로 가장 적절한 답변을 선택해주세요.",
                 susScale1: "강하게 비동의",
                 susScale5: "강하게 동의",
-                btnCalculate: "점수 계산하기",
+                btnCalculate: "계산 및 저장",
                 btnReset: "초기화",
                 resultTitle: "평가 결과",
                 btnClose: "닫기",
@@ -301,6 +341,9 @@
                 scoreLabel: "점수",
                 alertMissing: "선택하지 않은 항목이 있습니다. 빨간색으로 표시된 항목을 확인해주세요.",
                 alertReset: "입력된 내용이 모두 지워집니다. 계속하시겠습니까?",
+                statusSaving: "저장 중...",
+                statusSaved: "구글 시트에 저장됨!",
+                statusFailed: "저장 실패 (URL 확인 필요)",
 
                 tlxDims: [
                     { id: "mental", title: "정신적 요구", desc: "기억, 계산, 검색 등 정신적인 노력이 얼마나 필요했습니까?" },
@@ -332,27 +375,22 @@
                 tabGuide: "How to Use",
 
                 guideTitle: "User Guide",
-
                 guideStep0Title: "Select Language",
-                guideStep0Desc: "You can change the language (Korean, English, Japanese) using the selector at the top left of the screen.",
-
+                guideStep0Desc: "Change language at top left.",
                 guideStep1Title: "Enter Participant Name",
-                guideStep1Desc: "Enter the name of the test participant at the top of each survey tab. This helps identify the result data later.",
-                
-                guideStep2Title: "NASA-TLX (Task Load)",
-                guideStep2Desc: "Used to measure the perceived workload of a task. Evaluate 6 dimensions using sliders.",
-                guideTLXNote1: "<span class='font-semibold text-gray-700'>0-100 Scale:</span> Higher values mean higher workload/stress.",
-                guideTLXNote2: "<span class='font-semibold text-gray-700'>Performance:</span> Be careful! \"Failure\" is high (100), \"Perfect\" is low (0).",
-
-                guideStep3Title: "SUS (System Usability)",
-                guideStep3Desc: "A standard questionnaire for assessing perceived usability. Select from 1 (Disagree) to 5 (Agree).",
-                guideSUSNoteHeader: "Score Interpretation:",
-                guideSUSNote1: "• Above 80: Excellent (A)",
-                guideSUSNote2: "• Above 68: Good (B)",
-                guideSUSNote3: "• Below 50: Poor (F)",
-
-                guideStep4Title: "Save & Copy Results",
-                guideStep4Desc: "Click 'Calculate Score' to see results. Use 'Copy Result' to copy text to your clipboard for reports.",
+                guideStep1Desc: "Enter name at the top.",
+                guideStep2Title: "NASA-TLX",
+                guideStep2Desc: "Measure workload.",
+                guideTLXNote1: "<span class='font-semibold text-gray-700'>0-100 Scale:</span> Higher values = higher workload.",
+                guideTLXNote2: "<span class='font-semibold text-gray-700'>Performance:</span> Failure(100) - Perfect(0).",
+                guideStep3Title: "SUS",
+                guideStep3Desc: "Measure usability.",
+                guideSUSNoteHeader: "Interpretation:",
+                guideSUSNote1: "• >80: Excellent (A)",
+                guideSUSNote2: "• >68: Good (B)",
+                guideSUSNote3: "• <50: Poor (F)",
+                guideStep4Title: "Automatic Saving",
+                guideStep4Desc: "Results are automatically saved to Google Sheets when calculated, so manual copying is not required.",
 
                 tlxTitle: "NASA-TLX Assessment",
                 tlxDesc: "Please rate the task load based on the following dimensions.",
@@ -360,7 +398,7 @@
                 susDesc: "Please select the option that best expresses how you feel about the system.",
                 susScale1: "Strongly Disagree",
                 susScale5: "Strongly Agree",
-                btnCalculate: "Calculate Score",
+                btnCalculate: "Calculate & Save",
                 btnReset: "Reset",
                 resultTitle: "Result",
                 btnClose: "Close",
@@ -373,6 +411,9 @@
                 scoreLabel: "Score",
                 alertMissing: "There are unanswered items. Please check the items highlighted in red.",
                 alertReset: "All inputs will be cleared. Do you want to proceed?",
+                statusSaving: "Saving...",
+                statusSaved: "Saved to Google Sheets!",
+                statusFailed: "Save Failed (Check URL)",
 
                 tlxDims: [
                     { id: "mental", title: "Mental Demand", desc: "How much mental and perceptual activity was required?" },
@@ -404,27 +445,22 @@
                 tabGuide: "使い方",
 
                 guideTitle: "利用ガイド",
-                
                 guideStep0Title: "言語選択",
-                guideStep0Desc: "画面左上の選択ボックスから言語（韓国語、英語、日本語）を変更できます。",
-
+                guideStep0Desc: "左上で言語を変更できます。",
                 guideStep1Title: "参加者名の入力",
-                guideStep1Desc: "各アンケートタブの上部に参加者の名前を入力してください。後で結果データを識別するのに役立ちます。",
-                
+                guideStep1Desc: "上部に名前を入力します。",
                 guideStep2Title: "NASA-TLX (作業負荷)",
-                guideStep2Desc: "作業の主観的な負荷を測定します。6つの項目をスライダーで評価してください。",
-                guideTLXNote1: "<span class='font-semibold text-gray-700'>0-100スケール：</span> スコアが高いほど、作業負荷やストレスが高いことを意味します。",
-                guideTLXNote2: "<span class='font-semibold text-gray-700'>達成度：</span> 注意！「失敗」が高いスコア（100）、「完璧」が低いスコア（0）です。",
-
+                guideStep2Desc: "作業負荷を測定します。",
+                guideTLXNote1: "<span class='font-semibold text-gray-700'>0-100:</span> 高いほど高負荷。",
+                guideTLXNote2: "<span class='font-semibold text-gray-700'>達成度:</span> 失敗(100) - 完璧(0)です。",
                 guideStep3Title: "SUS (システム使用性)",
-                guideStep3Desc: "システムの使用性を評価する標準的なアンケートです。1（そう思わない）から5（そう思う）で選択します。",
-                guideSUSNoteHeader: "スコアの解釈：",
-                guideSUSNote1: "• 80点以上：非常に良い (A)",
-                guideSUSNote2: "• 68点以上：良い (B)",
-                guideSUSNote3: "• 50点未満：不可 (F)",
-
-                guideStep4Title: "結果の保存とコピー",
-                guideStep4Desc: "「スコア計算」をクリックすると結果が表示されます。「結果をコピー」ボタンでテキストをコピーし、レポート等に貼り付けてください。",
+                guideStep3Desc: "使用性を評価します。",
+                guideSUSNoteHeader: "解釈：",
+                guideSUSNote1: "• 80超：非常に良い (A)",
+                guideSUSNote2: "• 68超：良い (B)",
+                guideSUSNote3: "• 50未満：不可 (F)",
+                guideStep4Title: "結果の自動保存",
+                guideStep4Desc: "計算ボタンを押すとGoogleスプレッドシートに自動保存されるため、手動コピーは不要です。",
 
                 tlxTitle: "NASA-TLX 評価",
                 tlxDesc: "以下の項目について、作業中に感じた負荷の程度を評価してください。",
@@ -432,7 +468,7 @@
                 susDesc: "システムを使用した感想として、最も当てはまるものを選択してください。",
                 susScale1: "強くそう思わない",
                 susScale5: "強くそう思う",
-                btnCalculate: "スコア計算",
+                btnCalculate: "計算して保存",
                 btnReset: "リセット",
                 resultTitle: "評価結果",
                 btnClose: "閉じる",
@@ -445,6 +481,9 @@
                 scoreLabel: "スコア",
                 alertMissing: "未回答の項目があります。赤く表示された項目を確認してください。",
                 alertReset: "入力内容がすべて消去されます。よろしいですか？",
+                statusSaving: "保存中...",
+                statusSaved: "Googleシートに保存完了!",
+                statusFailed: "保存失敗 (URL確認)",
 
                 tlxDims: [
                     { id: "mental", title: "精神的負担", desc: "記憶、計算、探索など、どの程度の精神的努力が必要でしたか？" },
@@ -476,6 +515,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             renderContent();
             
+            // Check if Script URL is set
+            if (GOOGLE_SCRIPT_URL) {
+                document.getElementById('setup-warning').classList.add('hidden');
+            }
+
             // Language Selector Event
             document.getElementById('languageSelector').addEventListener('change', (e) => {
                 currentLang = e.target.value;
@@ -487,7 +531,7 @@
         function renderContent() {
             const data = dictionary[currentLang];
 
-            // 1. Static Text Updates - innerHTML used to support simple HTML tags (bold, etc)
+            // 1. Static Text Updates
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
                 if (data[key]) {
@@ -497,7 +541,6 @@
             
             // 2. Render NASA-TLX
             const tlxContainer = document.getElementById('tlx-container');
-            // Save current values if they exist
             const currentTlxValues = {};
             document.querySelectorAll('#form-tlx input[type="range"]').forEach(input => {
                 currentTlxValues[input.id] = input.value;
@@ -527,9 +570,8 @@
                 `;
             }).join('');
 
-            // 3. Render SUS
+            // 3. Render SUS (Fix applied here)
             const susContainer = document.getElementById('sus-container');
-            // Save current SUS values
             const currentSusValues = {};
             document.querySelectorAll('input[name^="sus-q"]:checked').forEach(input => {
                 currentSusValues[input.name] = input.value;
@@ -542,9 +584,12 @@
                 let radios = '';
                 for (let i = 1; i <= 5; i++) {
                     const checked = savedVal == i ? 'checked' : '';
+                    // Added unique ID for each radio option and matching 'for' in label
+                    const radioId = `sus-q${qNum}-opt${i}`;
+                    
                     radios += `
-                        <label class="flex flex-col items-center cursor-pointer flex-1">
-                            <input type="radio" name="sus-q${qNum}" value="${i}" class="sr-only radio-input" onclick="removeError('sus-box-${qNum}')" ${checked}>
+                        <label for="${radioId}" class="flex flex-col items-center cursor-pointer flex-1 group">
+                            <input type="radio" id="${radioId}" name="sus-q${qNum}" value="${i}" class="sr-only radio-input" onclick="removeError('sus-box-${qNum}')" ${checked}>
                             <div class="radio-circle w-10 h-10 border-2 border-gray-300 rounded-full flex items-center justify-center text-sm font-bold text-gray-500 hover:border-indigo-400 transition-colors mb-1">
                                 ${i}
                             </div>
@@ -587,7 +632,6 @@
             const guideSec = document.getElementById('section-guide');
             const participantInfo = document.getElementById('participant-info');
 
-            // Helper to set class
             const setActive = (btn) => btn.className = btn.className.replace('tab-inactive', 'tab-active');
             const setInactive = (btn) => btn.className = btn.className.replace('tab-active', 'tab-inactive');
 
@@ -602,7 +646,7 @@
             } else if (tab === 'guide') {
                 setInactive(tlxBtn); setInactive(susBtn); setActive(guideBtn);
                 tlxSec.classList.add('hidden'); susSec.classList.add('hidden'); guideSec.classList.remove('hidden');
-                participantInfo.classList.add('hidden'); // Hide participant info in guide tab
+                participantInfo.classList.add('hidden');
             }
         }
 
@@ -621,12 +665,20 @@
                 details += `${dimObj.title}: ${val}\n`;
             });
 
-            // Raw TLX (Average)
             const average = (total / 6).toFixed(1);
             const pName = document.getElementById('participant-name').value.trim() || 'Anonymous';
             
             lastResult = `[NASA-TLX Result]\nParticipant: ${pName}\nScore: ${average} / 100\n\nDetails:\n${details}`;
+            
             showModal("Raw TLX Score", average, null, details);
+            
+            sendToGoogleSheet({
+                type: 'NASA-TLX',
+                participant: pName,
+                score: average,
+                grade: '-',
+                raw: rawData
+            });
         }
 
         function calculateSUS() {
@@ -669,7 +721,6 @@
                 return;
             }
 
-            // Final SUS Score
             const finalScore = (score * 2.5).toFixed(1);
             const pName = document.getElementById('participant-name').value.trim() || 'Anonymous';
             
@@ -681,6 +732,46 @@
 
             lastResult = `[SUS Result]\nParticipant: ${pName}\nScore: ${finalScore}\n${grade}\n\nRaw Inputs:\n${details}`;
             showModal(`SUS Score`, finalScore, grade, details);
+
+            sendToGoogleSheet({
+                type: 'SUS',
+                participant: pName,
+                score: finalScore,
+                grade: grade,
+                raw: rawData
+            });
+        }
+
+        // --- Google Sheets Integration ---
+        function sendToGoogleSheet(data) {
+            if (!GOOGLE_SCRIPT_URL) return;
+
+            const statusEl = document.getElementById('save-status');
+            const statusText = dictionary[currentLang];
+            
+            statusEl.innerHTML = `<div class="flex items-center justify-center gap-2"><div class="spinner border-gray-400 border-t-indigo-600 w-4 h-4"></div> ${statusText.statusSaving}</div>`;
+            statusEl.classList.remove('text-green-500', 'text-red-500');
+            statusEl.classList.add('text-gray-500');
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors", 
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            })
+            .then(() => {
+                statusEl.innerHTML = `<i class="fas fa-check-circle"></i> ${statusText.statusSaved}`;
+                statusEl.classList.remove('text-gray-500');
+                statusEl.classList.add('text-green-500');
+            })
+            .catch((error) => {
+                console.error("Error:", error);
+                statusEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${statusText.statusFailed}`;
+                statusEl.classList.remove('text-gray-500');
+                statusEl.classList.add('text-red-500');
+            });
         }
 
         function resetForm(formId, askConfirm = true) {
@@ -688,6 +779,7 @@
                 const form = document.getElementById(formId);
                 form.reset();
                 document.getElementById('participant-name').value = ''; 
+                document.getElementById('save-status').textContent = '';
                 
                 if (formId === 'form-tlx') {
                     form.querySelectorAll('input[type="range"]').forEach(input => {
@@ -705,6 +797,7 @@
         function showModal(title, score, gradeText, rawDetails) {
             document.getElementById('result-subtitle').textContent = title;
             document.getElementById('result-score').textContent = score;
+            document.getElementById('save-status').textContent = ''; 
             
             const gradeDisplay = document.getElementById('result-grade-display');
             if(gradeText) {
