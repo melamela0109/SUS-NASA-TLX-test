@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UX/UI Evaluation Tool (NASA-TLX & SUS)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Inter:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Noto Sans KR', 'Noto Sans JP', sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4f46e5;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        
+        .tab-active {
+            border-bottom: 2px solid #4f46e5;
+            color: #4f46e5;
+            font-weight: 600;
+        }
+        .tab-inactive {
+            color: #6b7280;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-inactive:hover {
+            color: #374151;
+            border-bottom: 2px solid #d1d5db;
+        }
+
+        .error-shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            border-color: #ef4444 !important;
+            background-color: #fef2f2;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-gray-800 flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <!-- Left Side: Language Selector & Title -->
+            <div class="flex items-center w-full sm:w-auto justify-between sm:justify-start gap-4">
+                <!-- Language Selector (Moved to Left) -->
+                <div class="flex items-center space-x-2 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100 shadow-sm">
+                    <i class="fas fa-globe text-indigo-600"></i>
+                    <select id="languageSelector" class="bg-transparent border-none text-gray-800 text-sm font-medium focus:ring-0 cursor-pointer outline-none py-0 pl-1 pr-6">
+                        <option value="ko">한국어</option>
+                        <option value="en">English</option>
+                        <option value="ja">日本語</option>
+                    </select>
+                </div>
+
+                <h1 class="text-xl font-bold text-gray-900" data-i18n="appTitle">UX Evaluation Tool</h1>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 py-8 flex-grow w-full">
+        
+        <!-- Tab Navigation (Guide is First) -->
+        <div class="flex border-b border-gray-200 mb-6 overflow-x-auto">
+            <button id="tab-guide" onclick="switchTab('guide')" class="tab-active py-4 px-6 focus:outline-none flex-1 text-center whitespace-nowrap text-gray-800 hover:text-indigo-600" data-i18n="tabGuide">
+                <i class="fas fa-book-open mr-1"></i> How to Use
+            </button>
+            <button id="tab-tlx" onclick="switchTab('tlx')" class="tab-inactive py-4 px-6 focus:outline-none flex-1 text-center whitespace-nowrap" data-i18n="tabTLX">NASA-TLX</button>
+            <button id="tab-sus" onclick="switchTab('sus')" class="tab-inactive py-4 px-6 focus:outline-none flex-1 text-center whitespace-nowrap" data-i18n="tabSUS">SUS Survey</button>
+        </div>
+
+        <!-- Participant Info Input (Hidden by default, shown in TLX/SUS tabs) -->
+        <div id="participant-info" class="hidden bg-white rounded-xl shadow-sm p-4 mb-6 flex items-center gap-4 border border-gray-100">
+            <div class="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-500">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="flex-1">
+                <label for="participant-name" class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" data-i18n="participantLabel">Participant Name</label>
+                <input type="text" id="participant-name" class="w-full bg-transparent border-b border-gray-300 focus:border-indigo-500 focus:outline-none py-1 text-gray-800 placeholder-gray-300 transition-colors" placeholder="e.g. Hong Gil Dong">
+            </div>
+        </div>
+
+        <!-- Guide Section (Visible by default) -->
+        <div id="section-guide" class="fade-in">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h2 class="text-2xl font-bold mb-6 text-indigo-700 border-b pb-2" data-i18n="guideTitle">User Guide</h2>
+                
+                <div class="space-y-8">
+                    <!-- Step 0: Language -->
+                    <div class="flex gap-4">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold"><i class="fas fa-globe"></i></div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep0Title">Select Language</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed" data-i18n="guideStep0Desc">You can change the language (Korean, English, Japanese) using the selector at the top left of the screen.</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 1 -->
+                    <div class="flex gap-4">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">1</div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep1Title">Enter Participant Name</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed" data-i18n="guideStep1Desc">Enter the name of the test participant at the top of the screen. This helps identify the result data later.</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="flex gap-4">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">2</div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep2Title">NASA-TLX (Task Load)</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed mb-2" data-i18n="guideStep2Desc">Used to measure the perceived workload of a task. Evaluate 6 dimensions using sliders.</p>
+                            <ul class="list-disc list-inside text-xs text-gray-500 space-y-1 bg-gray-50 p-3 rounded-lg">
+                                <li data-i18n="guideTLXNote1"><span class="font-semibold text-gray-700">0-100 Scale:</span> Higher values mean higher workload/stress.</li>
+                                <li data-i18n="guideTLXNote2"><span class="font-semibold text-gray-700">Performance:</span> Be careful! "Failure" is high (100), "Perfect" is low (0).</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="flex gap-4">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">3</div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep3Title">SUS (System Usability)</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed mb-2" data-i18n="guideStep3Desc">A standard questionnaire for assessing perceived usability. Select from 1 to 5.</p>
+                            <div class="bg-gray-50 p-3 rounded-lg text-xs text-gray-500 space-y-1">
+                                <p><span class="font-semibold text-blue-600" data-i18n="guideSUSNoteHeader">Score Interpretation:</span></p>
+                                <p data-i18n="guideSUSNote1">• Above 80: Excellent (A)</p>
+                                <p data-i18n="guideSUSNote2">• Above 68: Good (B)</p>
+                                <p data-i18n="guideSUSNote3">• Below 50: Poor (F)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="flex gap-4">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">4</div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 mb-1" data-i18n="guideStep4Title">Save & Copy Results</h3>
+                            <p class="text-gray-600 text-sm leading-relaxed" data-i18n="guideStep4Desc">After clicking 'Calculate Score', a modal will appear. Use the 'Copy Result' button to copy the text to your clipboard for pasting into Excel or reports.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NASA-TLX Section (Hidden by default) -->
+        <div id="section-tlx" class="hidden fade-in">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h2 class="text-2xl font-bold mb-2 text-indigo-700" data-i18n="tlxTitle">NASA Task Load Index</h2>
+                <p class="text-gray-600 mb-6 text-sm" data-i18n="tlxDesc">Please rate the task load based on the following dimensions.</p>
+
+                <form id="form-tlx">
+                    <div id="tlx-container" class="space-y-8"></div>
+                    
+                    <div class="mt-8 flex justify-end space-x-3">
+                        <button type="button" onclick="resetForm('form-tlx')" class="px-6 py-3 rounded-lg text-gray-500 font-semibold hover:bg-gray-100 transition duration-200">
+                            <i class="fas fa-undo mr-2"></i> <span data-i18n="btnReset">Reset</span>
+                        </button>
+                        <button type="button" onclick="calculateTLX()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow transition duration-200 flex items-center">
+                            <i class="fas fa-calculator mr-2"></i> <span data-i18n="btnCalculate">Calculate Score</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- SUS Section (Hidden by default) -->
+        <div id="section-sus" class="hidden fade-in">
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h2 class="text-2xl font-bold mb-2 text-indigo-700" data-i18n="susTitle">System Usability Scale</h2>
+                <p class="text-gray-600 mb-6 text-sm" data-i18n="susDesc">Please select the option that best expresses how you feel about the system.</p>
+
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 text-sm text-blue-700">
+                    <span class="font-bold">1:</span> <span data-i18n="susScale1">Strongly Disagree</span> &nbsp;|&nbsp; 
+                    <span class="font-bold">5:</span> <span data-i18n="susScale5">Strongly Agree</span>
+                </div>
+
+                <form id="form-sus">
+                    <div id="sus-container" class="space-y-6"></div>
+
+                    <div class="mt-8 flex justify-end space-x-3">
+                        <button type="button" onclick="resetForm('form-sus')" class="px-6 py-3 rounded-lg text-gray-500 font-semibold hover:bg-gray-100 transition duration-200">
+                            <i class="fas fa-undo mr-2"></i> <span data-i18n="btnReset">Reset</span>
+                        </button>
+                        <button type="button" onclick="calculateSUS()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow transition duration-200 flex items-center">
+                            <i class="fas fa-calculator mr-2"></i> <span data-i18n="btnCalculate">Calculate Score</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Result Modal -->
+        <div id="result-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 transform transition-all scale-100">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-poll text-2xl text-indigo-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" data-i18n="resultTitle">Result</h3>
+                    <p class="text-gray-500" id="result-subtitle">Score Analysis</p>
+                </div>
+                
+                <div class="bg-gray-50 rounded-lg p-4 mb-6 text-center">
+                    <div class="text-4xl font-extrabold text-indigo-600 mb-1" id="result-score">0</div>
+                    <div class="text-sm font-medium text-gray-500 uppercase tracking-wide" id="result-label">Total Score</div>
+                </div>
+
+                <div id="result-details" class="hidden"></div>
+                <div id="result-grade-display" class="text-center text-lg font-medium text-gray-700 mb-6"></div>
+
+                <div class="flex space-x-3">
+                    <button onclick="closeModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition">
+                        <span data-i18n="btnClose">Close</span>
+                    </button>
+                    <button onclick="copyResults()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                        <i class="far fa-copy mr-1"></i> <span data-i18n="btnCopy">Copy Result</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- Data & Translations ---
+        const dictionary = {
+            ko: {
+                appTitle: "UX/UI 평가 도구",
+                langLabel: "언어 선택",
+                participantLabel: "참가자 이름",
+                tabTLX: "NASA-TLX (작업부하)",
+                tabSUS: "SUS (시스템 사용성)",
+                tabGuide: "사용 방법",
+                
+                guideTitle: "사용 가이드",
+                
+                guideStep0Title: "언어 선택",
+                guideStep0Desc: "화면 좌측 상단의 선택기를 통해 언어(한국어, 영어, 일본어)를 변경할 수 있습니다.",
+
+                guideStep1Title: "참가자 이름 입력",
+                guideStep1Desc: "설문 탭 상단에 참가자의 이름을 입력하세요. 나중에 결과 데이터를 식별하는 데 도움이 됩니다.",
+                
+                guideStep2Title: "NASA-TLX (작업 부하)",
+                guideStep2Desc: "작업 수행 시 느껴지는 주관적인 부하를 측정합니다. 6가지 항목을 슬라이더로 조절하세요.",
+                guideTLXNote1: "<span class='font-semibold text-gray-700'>0-100 척도:</span> 점수가 높을수록 작업 부하/스트레스가 높음을 의미합니다.",
+                guideTLXNote2: "<span class='font-semibold text-gray-700'>수행도(Performance):</span> 주의하세요! '실패'가 높은 점수(100), '완벽'이 낮은 점수(0)입니다.",
+
+                guideStep3Title: "SUS (시스템 사용성)",
+                guideStep3Desc: "시스템의 사용성을 평가하는 표준 설문입니다. 1(비동의)부터 5(동의)까지 선택하세요.",
+                guideSUSNoteHeader: "점수 해석:",
+                guideSUSNote1: "• 80점 이상: 탁월 (A)",
+                guideSUSNote2: "• 68점 이상: 우수 (B)",
+                guideSUSNote3: "• 50점 미만: 미흡 (F)",
+
+                guideStep4Title: "결과 저장 및 복사",
+                guideStep4Desc: "계산하기 버튼을 누르면 결과창이 뜹니다. '결과 복사' 버튼을 눌러 텍스트를 복사한 뒤 엑셀이나 보고서에 붙여넣으세요.",
+
+                tlxTitle: "NASA-TLX 평가",
+                tlxDesc: "수행한 작업에 대해 각 항목별로 느껴진 부하 정도를 평가해주세요.",
+                susTitle: "SUS 사용성 척도",
+                susDesc: "이 시스템을 사용해본 경험을 바탕으로 가장 적절한 답변을 선택해주세요.",
+                susScale1: "강하게 비동의",
+                susScale5: "강하게 동의",
+                btnCalculate: "점수 계산하기",
+                btnReset: "초기화",
+                resultTitle: "평가 결과",
+                btnClose: "닫기",
+                btnCopy: "결과 복사",
+                
+                veryLow: "매우 낮음",
+                veryHigh: "매우 높음",
+                perfect: "완벽함",
+                failure: "실패",
+                scoreLabel: "점수",
+                alertMissing: "선택하지 않은 항목이 있습니다. 빨간색으로 표시된 항목을 확인해주세요.",
+                alertReset: "입력된 내용이 모두 지워집니다. 계속하시겠습니까?",
+
+                tlxDims: [
+                    { id: "mental", title: "정신적 요구", desc: "기억, 계산, 검색 등 정신적인 노력이 얼마나 필요했습니까?" },
+                    { id: "physical", title: "신체적 요구", desc: "밀기, 당기기, 조작 등 신체적인 노력이 얼마나 필요했습니까?" },
+                    { id: "temporal", title: "시간적 요구", desc: "작업 속도가 얼마나 급박하거나 느긋하게 느껴졌습니까?" },
+                    { id: "performance", title: "수행도 (Performance)", desc: "목표를 얼마나 성공적으로 달성했다고 생각합니까? (성공적일수록 왼쪽)", lowLabelOverride: "완벽함", highLabelOverride: "실패" },
+                    { id: "effort", title: "노력", desc: "목표를 달성하기 위해 정신적/신체적으로 얼마나 노력했습니까?" },
+                    { id: "frustration", title: "좌절감", desc: "작업 중 얼마나 불안하거나, 낙담하거나, 짜증이 났습니까?" }
+                ],
+                susQuestions: [
+                    "이 시스템을 자주 사용할 것 같다.",
+                    "이 시스템은 불필요하게 복잡하다.",
+                    "이 시스템은 사용하기 쉽다.",
+                    "이 시스템을 사용하려면 기술적인 지원이 필요할 것 같다.",
+                    "이 시스템의 다양한 기능들이 잘 통합되어 있다.",
+                    "이 시스템은 일관성이 너무 없다.",
+                    "대부분의 사람들이 이 시스템을 매우 빠르게 배울 수 있을 것이다.",
+                    "이 시스템은 사용하기 매우 어색하다.",
+                    "나는 이 시스템을 사용할 때 매우 자신감을 느꼈다.",
+                    "이 시스템을 제대로 사용하기 위해 배워야 할 것이 너무 많았다."
+                ]
+            },
+            en: {
+                appTitle: "UX Evaluation Tool",
+                langLabel: "Language",
+                participantLabel: "Participant Name",
+                tabTLX: "NASA-TLX",
+                tabSUS: "SUS Survey",
+                tabGuide: "How to Use",
+
+                guideTitle: "User Guide",
+
+                guideStep0Title: "Select Language",
+                guideStep0Desc: "You can change the language (Korean, English, Japanese) using the selector at the top left of the screen.",
+
+                guideStep1Title: "Enter Participant Name",
+                guideStep1Desc: "Enter the name of the test participant at the top of each survey tab. This helps identify the result data later.",
+                
+                guideStep2Title: "NASA-TLX (Task Load)",
+                guideStep2Desc: "Used to measure the perceived workload of a task. Evaluate 6 dimensions using sliders.",
+                guideTLXNote1: "<span class='font-semibold text-gray-700'>0-100 Scale:</span> Higher values mean higher workload/stress.",
+                guideTLXNote2: "<span class='font-semibold text-gray-700'>Performance:</span> Be careful! \"Failure\" is high (100), \"Perfect\" is low (0).",
+
+                guideStep3Title: "SUS (System Usability)",
+                guideStep3Desc: "A standard questionnaire for assessing perceived usability. Select from 1 (Disagree) to 5 (Agree).",
+                guideSUSNoteHeader: "Score Interpretation:",
+                guideSUSNote1: "• Above 80: Excellent (A)",
+                guideSUSNote2: "• Above 68: Good (B)",
+                guideSUSNote3: "• Below 50: Poor (F)",
+
+                guideStep4Title: "Save & Copy Results",
+                guideStep4Desc: "Click 'Calculate Score' to see results. Use 'Copy Result' to copy text to your clipboard for reports.",
+
+                tlxTitle: "NASA-TLX Assessment",
+                tlxDesc: "Please rate the task load based on the following dimensions.",
+                susTitle: "System Usability Scale",
+                susDesc: "Please select the option that best expresses how you feel about the system.",
+                susScale1: "Strongly Disagree",
+                susScale5: "Strongly Agree",
+                btnCalculate: "Calculate Score",
+                btnReset: "Reset",
+                resultTitle: "Result",
+                btnClose: "Close",
+                btnCopy: "Copy Result",
+
+                veryLow: "Very Low",
+                veryHigh: "Very High",
+                perfect: "Perfect",
+                failure: "Failure",
+                scoreLabel: "Score",
+                alertMissing: "There are unanswered items. Please check the items highlighted in red.",
+                alertReset: "All inputs will be cleared. Do you want to proceed?",
+
+                tlxDims: [
+                    { id: "mental", title: "Mental Demand", desc: "How much mental and perceptual activity was required?" },
+                    { id: "physical", title: "Physical Demand", desc: "How much physical activity was required?" },
+                    { id: "temporal", title: "Temporal Demand", desc: "How much time pressure did you feel due to the rate or pace of the task?" },
+                    { id: "performance", title: "Performance", desc: "How successful were you in accomplishing what you were asked to do?", lowLabelOverride: "Perfect", highLabelOverride: "Failure" },
+                    { id: "effort", title: "Effort", desc: "How hard did you have to work to accomplish your level of performance?" },
+                    { id: "frustration", title: "Frustration", desc: "How insecure, discouraged, irritated, stressed, and annoyed were you?" }
+                ],
+                susQuestions: [
+                    "I think that I would like to use this system frequently.",
+                    "I found the system unnecessarily complex.",
+                    "I thought the system was easy to use.",
+                    "I think that I would need the support of a technical person to be able to use this system.",
+                    "I found the various functions in this system were well integrated.",
+                    "I thought there was too much inconsistency in this system.",
+                    "I would imagine that most people would learn to use this system very quickly.",
+                    "I found the system very awkward to use.",
+                    "I felt very confident using the system.",
+                    "I needed to learn a lot of things before I could get going with this system."
+                ]
+            },
+            ja: {
+                appTitle: "UX評価ツール",
+                langLabel: "言語選択",
+                participantLabel: "参加者名",
+                tabTLX: "NASA-TLX (作業負荷)",
+                tabSUS: "SUS (システム使用性)",
+                tabGuide: "使い方",
+
+                guideTitle: "利用ガイド",
+                
+                guideStep0Title: "言語選択",
+                guideStep0Desc: "画面左上の選択ボックスから言語（韓国語、英語、日本語）を変更できます。",
+
+                guideStep1Title: "参加者名の入力",
+                guideStep1Desc: "各アンケートタブの上部に参加者の名前を入力してください。後で結果データを識別するのに役立ちます。",
+                
+                guideStep2Title: "NASA-TLX (作業負荷)",
+                guideStep2Desc: "作業の主観的な負荷を測定します。6つの項目をスライダーで評価してください。",
+                guideTLXNote1: "<span class='font-semibold text-gray-700'>0-100スケール：</span> スコアが高いほど、作業負荷やストレスが高いことを意味します。",
+                guideTLXNote2: "<span class='font-semibold text-gray-700'>達成度：</span> 注意！「失敗」が高いスコア（100）、「完璧」が低いスコア（0）です。",
+
+                guideStep3Title: "SUS (システム使用性)",
+                guideStep3Desc: "システムの使用性を評価する標準的なアンケートです。1（そう思わない）から5（そう思う）で選択します。",
+                guideSUSNoteHeader: "スコアの解釈：",
+                guideSUSNote1: "• 80点以上：非常に良い (A)",
+                guideSUSNote2: "• 68点以上：良い (B)",
+                guideSUSNote3: "• 50点未満：不可 (F)",
+
+                guideStep4Title: "結果の保存とコピー",
+                guideStep4Desc: "「スコア計算」をクリックすると結果が表示されます。「結果をコピー」ボタンでテキストをコピーし、レポート等に貼り付けてください。",
+
+                tlxTitle: "NASA-TLX 評価",
+                tlxDesc: "以下の項目について、作業中に感じた負荷の程度を評価してください。",
+                susTitle: "SUS 使用性スケール",
+                susDesc: "システムを使用した感想として、最も当てはまるものを選択してください。",
+                susScale1: "強くそう思わない",
+                susScale5: "強くそう思う",
+                btnCalculate: "スコア計算",
+                btnReset: "リセット",
+                resultTitle: "評価結果",
+                btnClose: "閉じる",
+                btnCopy: "結果をコピー",
+
+                veryLow: "非常に低い",
+                veryHigh: "非常に高い",
+                perfect: "完璧",
+                failure: "失敗",
+                scoreLabel: "スコア",
+                alertMissing: "未回答の項目があります。赤く表示された項目を確認してください。",
+                alertReset: "入力内容がすべて消去されます。よろしいですか？",
+
+                tlxDims: [
+                    { id: "mental", title: "精神的負担", desc: "記憶、計算、探索など、どの程度の精神的努力が必要でしたか？" },
+                    { id: "physical", title: "身体的負担", desc: "押す、引く、操作するなど、どの程度の身体的努力が必要でしたか？" },
+                    { id: "temporal", title: "時間的切迫感", desc: "作業のペースや期限について、どの程度の時間的圧力を感じましたか？" },
+                    { id: "performance", title: "達成度", desc: "求められた課題をどの程度成功裏に達成できましたか？", lowLabelOverride: "完璧", highLabelOverride: "失敗" },
+                    { id: "effort", title: "努力", desc: "達成度を得るために、精神的・身体的にどの程度の努力が必要でしたか？" },
+                    { id: "frustration", title: "フラストレーション", desc: "作業中、不快感、ストレス、イライラをどの程度感じましたか？" }
+                ],
+                susQuestions: [
+                    "このシステムを頻繁に使用したいと思う。",
+                    "このシステムは必要以上に複雑だと感じる。",
+                    "このシステムは使いやすい。",
+                    "このシステムを使用するには、技術的なサポートが必要だと思う。",
+                    "このシステムの様々な機能はよく統合されている。",
+                    "このシステムには一貫性がないと思う。",
+                    "多くの人は、このシステムをすぐに使いこなせるようになると思う。",
+                    "このシステムは非常に使いづらい。",
+                    "このシステムを使用する際、とても自信を持って使えた。",
+                    "このシステムを使う前に、多くのことを学ぶ必要があった。"
+                ]
+            }
+        };
+
+        let currentLang = 'ko';
+        let lastResult = ""; 
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderContent();
+            
+            // Language Selector Event
+            document.getElementById('languageSelector').addEventListener('change', (e) => {
+                currentLang = e.target.value;
+                renderContent();
+            });
+        });
+
+        // --- Rendering Logic ---
+        function renderContent() {
+            const data = dictionary[currentLang];
+
+            // 1. Static Text Updates - innerHTML used to support simple HTML tags (bold, etc)
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (data[key]) {
+                    el.innerHTML = data[key]; 
+                }
+            });
+            
+            // 2. Render NASA-TLX
+            const tlxContainer = document.getElementById('tlx-container');
+            // Save current values if they exist
+            const currentTlxValues = {};
+            document.querySelectorAll('#form-tlx input[type="range"]').forEach(input => {
+                currentTlxValues[input.id] = input.value;
+            });
+            
+            tlxContainer.innerHTML = data.tlxDims.map((dim, index) => {
+                const lowLabel = dim.lowLabelOverride || data.veryLow;
+                const highLabel = dim.highLabelOverride || data.veryHigh;
+                const val = currentTlxValues[`tlx-${dim.id}`] || 50;
+
+                return `
+                <div class="border-b border-gray-100 pb-6 last:border-0 last:pb-0">
+                    <label class="block mb-2 font-bold text-gray-800 text-lg">${dim.title}</label>
+                    <p class="text-sm text-gray-500 mb-4">${dim.desc}</p>
+                    
+                    <div class="relative pt-1">
+                        <div class="flex justify-between text-xs text-gray-400 mb-1 font-medium whitespace-nowrap">
+                            <span>${lowLabel}</span>
+                            <span>${highLabel}</span>
+                        </div>
+                        <input type="range" id="tlx-${dim.id}" min="0" max="100" value="${val}" 
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                            oninput="document.getElementById('val-${dim.id}').textContent = this.value">
+                        <div class="text-center mt-2 text-indigo-600 font-bold" id="val-${dim.id}">${val}</div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            // 3. Render SUS
+            const susContainer = document.getElementById('sus-container');
+            // Save current SUS values
+            const currentSusValues = {};
+            document.querySelectorAll('input[name^="sus-q"]:checked').forEach(input => {
+                currentSusValues[input.name] = input.value;
+            });
+
+            susContainer.innerHTML = data.susQuestions.map((q, index) => {
+                const qNum = index + 1;
+                const savedVal = currentSusValues[`sus-q${qNum}`];
+
+                let radios = '';
+                for (let i = 1; i <= 5; i++) {
+                    const checked = savedVal == i ? 'checked' : '';
+                    radios += `
+                        <label class="flex flex-col items-center cursor-pointer flex-1">
+                            <input type="radio" name="sus-q${qNum}" value="${i}" class="sr-only radio-input" onclick="removeError('sus-box-${qNum}')" ${checked}>
+                            <div class="radio-circle w-10 h-10 border-2 border-gray-300 rounded-full flex items-center justify-center text-sm font-bold text-gray-500 hover:border-indigo-400 transition-colors mb-1">
+                                ${i}
+                            </div>
+                        </label>
+                    `;
+                }
+
+                return `
+                <div id="sus-box-${qNum}" class="bg-gray-50 rounded-lg p-4 border border-gray-100 transition-colors duration-300">
+                    <p class="font-medium text-gray-800 mb-3"><span class="text-indigo-500 font-bold mr-2">Q${qNum}.</span> ${q}</p>
+                    <div class="flex justify-between items-center gap-2">
+                        <span class="text-xs text-gray-400 hidden sm:block whitespace-nowrap min-w-fit text-right">${data.susScale1}</span>
+                        <div class="flex flex-1 gap-2 sm:gap-4 justify-between">
+                            ${radios}
+                        </div>
+                        <span class="text-xs text-gray-400 hidden sm:block whitespace-nowrap min-w-fit">${data.susScale5}</span>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // --- UI Utils for Validation ---
+        function removeError(elementId) {
+            const el = document.getElementById(elementId);
+            if(el) {
+                el.classList.remove('error-shake');
+                el.classList.remove('border-red-500'); 
+            }
+        }
+
+        // --- Logic: Tab Switching ---
+        function switchTab(tab) {
+            const tlxBtn = document.getElementById('tab-tlx');
+            const susBtn = document.getElementById('tab-sus');
+            const guideBtn = document.getElementById('tab-guide');
+            
+            const tlxSec = document.getElementById('section-tlx');
+            const susSec = document.getElementById('section-sus');
+            const guideSec = document.getElementById('section-guide');
+            const participantInfo = document.getElementById('participant-info');
+
+            // Helper to set class
+            const setActive = (btn) => btn.className = btn.className.replace('tab-inactive', 'tab-active');
+            const setInactive = (btn) => btn.className = btn.className.replace('tab-active', 'tab-inactive');
+
+            if (tab === 'tlx') {
+                setActive(tlxBtn); setInactive(susBtn); setInactive(guideBtn);
+                tlxSec.classList.remove('hidden'); susSec.classList.add('hidden'); guideSec.classList.add('hidden');
+                participantInfo.classList.remove('hidden');
+            } else if (tab === 'sus') {
+                setInactive(tlxBtn); setActive(susBtn); setInactive(guideBtn);
+                tlxSec.classList.add('hidden'); susSec.classList.remove('hidden'); guideSec.classList.add('hidden');
+                participantInfo.classList.remove('hidden');
+            } else if (tab === 'guide') {
+                setInactive(tlxBtn); setInactive(susBtn); setActive(guideBtn);
+                tlxSec.classList.add('hidden'); susSec.classList.add('hidden'); guideSec.classList.remove('hidden');
+                participantInfo.classList.add('hidden'); // Hide participant info in guide tab
+            }
+        }
+
+        // --- Logic: Calculations ---
+        function calculateTLX() {
+            const dims = ['mental', 'physical', 'temporal', 'performance', 'effort', 'frustration'];
+            let total = 0;
+            let details = "";
+            let rawData = {};
+
+            dims.forEach(id => {
+                const val = parseInt(document.getElementById(`tlx-${id}`).value) || 0;
+                total += val;
+                rawData[id] = val;
+                const dimObj = dictionary[currentLang].tlxDims.find(d => d.id === id);
+                details += `${dimObj.title}: ${val}\n`;
+            });
+
+            // Raw TLX (Average)
+            const average = (total / 6).toFixed(1);
+            const pName = document.getElementById('participant-name').value.trim() || 'Anonymous';
+            
+            lastResult = `[NASA-TLX Result]\nParticipant: ${pName}\nScore: ${average} / 100\n\nDetails:\n${details}`;
+            showModal("Raw TLX Score", average, null, details);
+        }
+
+        function calculateSUS() {
+            let score = 0;
+            let missing = [];
+            let details = "";
+            let rawData = {};
+
+            for (let i = 1; i <= 10; i++) {
+                const boxId = `sus-box-${i}`;
+                const radios = document.getElementsByName(`sus-q${i}`);
+                let val = null;
+                for (const radio of radios) {
+                    if (radio.checked) val = parseInt(radio.value);
+                }
+
+                if (val === null) {
+                    missing.push(boxId);
+                    document.getElementById(boxId).classList.add('error-shake');
+                    continue;
+                } else {
+                     document.getElementById(boxId).classList.remove('error-shake');
+                }
+
+                rawData[`Q${i}`] = val;
+
+                let contribution = 0;
+                if (i % 2 !== 0) {
+                    contribution = val - 1;
+                } else {
+                    contribution = 5 - val;
+                }
+                score += contribution;
+                details += `Q${i}: ${val} (Pt: ${contribution})\n`;
+            }
+
+            if (missing.length > 0) {
+                alert(dictionary[currentLang].alertMissing);
+                document.getElementById(missing[0]).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+
+            // Final SUS Score
+            const finalScore = (score * 2.5).toFixed(1);
+            const pName = document.getElementById('participant-name').value.trim() || 'Anonymous';
+            
+            let grade = "";
+            if (finalScore >= 80) grade = "Grade: A (Excellent)";
+            else if (finalScore >= 68) grade = "Grade: B (Good)";
+            else if (finalScore >= 50) grade = "Grade: C (OK)";
+            else grade = "Grade: F (Poor)";
+
+            lastResult = `[SUS Result]\nParticipant: ${pName}\nScore: ${finalScore}\n${grade}\n\nRaw Inputs:\n${details}`;
+            showModal(`SUS Score`, finalScore, grade, details);
+        }
+
+        function resetForm(formId, askConfirm = true) {
+            if (!askConfirm || confirm(dictionary[currentLang].alertReset)) {
+                const form = document.getElementById(formId);
+                form.reset();
+                document.getElementById('participant-name').value = ''; 
+                
+                if (formId === 'form-tlx') {
+                    form.querySelectorAll('input[type="range"]').forEach(input => {
+                        input.value = 50;
+                        document.getElementById(`val-${input.id.replace('tlx-', '')}`).textContent = 50;
+                    });
+                } else {
+                    renderContent(); 
+                    setTimeout(renderContent, 10);
+                }
+            }
+        }
+
+        // --- UI Utils ---
+        function showModal(title, score, gradeText, rawDetails) {
+            document.getElementById('result-subtitle').textContent = title;
+            document.getElementById('result-score').textContent = score;
+            
+            const gradeDisplay = document.getElementById('result-grade-display');
+            if(gradeText) {
+                gradeDisplay.textContent = gradeText;
+                gradeDisplay.classList.remove('hidden');
+            } else {
+                gradeDisplay.classList.add('hidden');
+            }
+
+            document.getElementById('result-details').textContent = rawDetails;
+
+            document.getElementById('result-modal').classList.remove('hidden');
+            document.getElementById('result-modal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('result-modal').classList.add('hidden');
+            document.getElementById('result-modal').classList.remove('flex');
+        }
+
+        function copyResults() {
+            const tempInput = document.createElement("textarea");
+            tempInput.value = lastResult;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            
+            const btn = document.querySelector('#result-modal button:nth-child(2) span'); 
+            const originalText = btn.textContent;
+            btn.textContent = "Copied!";
+            setTimeout(() => btn.textContent = originalText, 1500);
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('result-modal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>
